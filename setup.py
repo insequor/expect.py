@@ -12,7 +12,7 @@ with open(os.path.join(rootdir, "README.md")) as in_file:
     long_description = in_file.read()
 
 setup(
-    name="expect",
+    name="expect-py",
     version='0.1',
     description="customization over oktest package",
     author='Ozgur Yuksel',
