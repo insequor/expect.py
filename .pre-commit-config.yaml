@@ -1,0 +1,26 @@
+# See https://pre-commit.com/ for usage and config
+repos:
+- repo: local
+  hooks:
+  - id: flake8  # Static Code Analyzer for Code Syntax
+    name: flake8
+    stages: [commit]
+    language: system
+    entry: pipenv run flake8 --max-line-length=120
+    types: [python]
+
+  - id: mypy  # Type Checking
+    name: mypy
+    stages: [commit]
+    language: system
+    entry: pipenv run mypy
+    types: [python]
+    require_serial: true
+
+  - id: expect  # Automated Tests
+    name: expect
+    stages: [commit]
+    language: system
+    entry: pipenv run expect
+    types: [python]
+    pass_filenames: false

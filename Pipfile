@@ -1,0 +1,18 @@
+[[source]]
+name = "pypi"
+url = "https://pypi.python.org/simple"
+verify_ssl = true
+
+[requires]
+python_version = "3.8"
+
+[packages]
+oktest = "0.15.2"
+
+[dev-packages]
+flake8 = "4.0.1"
+mypy = "0.931"
+pre-commit = "2.17.0"
+
+[scripts]
+expect = "python -m expect tests"

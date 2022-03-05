@@ -1,0 +1,21 @@
+image: "python:3.8"
+
+variables:
+    LOGLEVEL: "INFO"
+    
+default:  
+  tags:
+
+before_script:
+  - python --version
+  - pipenv install --dev
+
+stages:
+  - Testing
+
+testing:
+  stage: Testing
+  script:
+  - pipenv run flake8 --max-line-length=120
+  - pipenv run mypy
+  - pipenv run expect
