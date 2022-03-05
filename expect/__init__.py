@@ -31,7 +31,9 @@ situation = oktest.situation
 expect = oktest.ok
 
 
-# Support callable conditions for skip functions
+# Support callable conditions for skip functions. This also fixes an issue with _firstlineno setting
+# The issue is visible if skip comes after todo item. It was keeping the line number of todo decorator
+# instead of the original function
 class SkipWithRuntimeConditionEvaluation(object):
     def __call__(self, reason: str):
         raise oktest.SkipTest(reason)
@@ -51,7 +53,8 @@ class SkipWithRuntimeConditionEvaluation(object):
                     func(self)
             fn.__name__ = func.__name__
             fn.__doc__ = func.__doc__
-            fn._firstlineno = oktest.util._func_firstlineno(func)
+            lineno = getattr(func, '_firstlineno', None) or oktest.util._func_firstlineno(func)
+            fn._firstlineno = lineno
             return fn
         return deco
 
@@ -70,7 +73,8 @@ class SkipWithRuntimeConditionEvaluation(object):
                     func(self)
             fn.__name__ = func.__name__
             fn.__doc__ = func.__doc__
-            fn._firstlineno = oktest.util._func_firstlineno(func)
+            lineno = getattr(func, '_firstlineno', None) or oktest.util._func_firstlineno(func)
+            fn._firstlineno = lineno
             return fn
 
         return deco
@@ -86,10 +90,19 @@ test_that = oktest.test
 # This is to ensure that todo tests are shown without altering the order, oktest shows them at the end
 def todo(func: Callable):
     deco = oktest.todo(func) 
-    deco._firstlineno = func.__code__.co_firstlineno
+    lineno = getattr(func, '_firstlineno', None) or oktest.util._func_firstlineno(func)
+    deco._firstlineno = lineno
+    print(f"First Line {lineno} for {func}  {deco}")
     return deco 
 
 
+# TODO: Fail the test case if there is no test executed (no tests, or all skipped). There should be at least one
+# pass or todo test.
+
+# TODO: Print the call stack information for the exception related assertions
+
+# TODO: Concept of failing the test case in the first error or executing all tests (workflow vs coverage ?)
+ 
 #
 # Test Execution
 #
