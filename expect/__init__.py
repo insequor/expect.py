@@ -92,7 +92,6 @@ def todo(func: Callable):
     deco = oktest.todo(func) 
     lineno = getattr(func, '_firstlineno', None) or oktest.util._func_firstlineno(func)
     deco._firstlineno = lineno
-    print(f"First Line {lineno} for {func}  {deco}")
     return deco 
 
 
