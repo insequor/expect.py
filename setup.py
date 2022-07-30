@@ -25,7 +25,7 @@ setup(
     long_description_content_type="text/markdown",
     license="MIT License",
     platforms=["any"],
-    python_requires=">=3.8",
+    python_requires=">=3.10",
     classifiers=[
         "License :: MIT License",
         "Programming Language :: Python",
