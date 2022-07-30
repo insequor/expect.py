@@ -1,5 +1,6 @@
 import logging
-from typing import Callable, Union
+import re
+from typing import Callable, Union, Any, Type, AnyStr
 
 import oktest  # type: ignore
 
@@ -27,8 +28,124 @@ situation = oktest.situation
 # Customizations
 #
 
-# I simply like better to read it "expect(True) != False" rather than "ok(True) != False"
-expect = oktest.ok
+
+# oktest adds the assertions at runtime, but that means we do not get type hints
+# 
+class AssertionObject(oktest.AssertionObject):
+    def __eq__(self, other: Any):
+        super().__eq__(other)
+
+    def __ne__(self, other: Any):
+        super().__eq__(other)
+
+    def __gt__(self, other: Any):
+        super().__gt__(other)
+
+    def __ge__(self, other: Any):
+        super().__ge__(other)
+
+    def __lt__(self, other: Any):
+        super().__lt__(other)
+
+    def __le__(self, other: Any):
+        super().__le__(other)
+
+    def between(self, min: Any, max: Any) -> "AssertionObject":
+        return super().between(min, max)
+
+    def in_delta(self, other: Any, delta: Any) -> "AssertionObject":
+        return super().in_delta(other, delta)
+
+    def in_(self, other: list[Any] | dict[Any, Any]):
+        super().in_(other)
+
+    def not_in(self, other: list[Any]):
+        super().not_in(other)
+
+    def contains(self, other: Any):
+        super().contains(other)
+
+    def not_contain(self, other: Any):
+        super().not_contain(other)
+
+    def is_(self, other: Any):
+        super().is_(other)
+
+    def is_not(self, other: Any):
+        super().is_not(other)
+
+    def is_a(self, other: type):
+        super().is_a(other)
+
+    def is_not_a(self, other: type):
+        super().is_not_a(other)
+
+    def has_attr(self, name: str):
+        super().__eq__(name)
+
+    # Hidden in favor of using in_
+    # def has_key(self, key: Any) -> "AssertionObject":
+    #    return super().has_key(key)  # type: ignore
+
+    def has_item(self, key: Any, val: Any) -> "AssertionObject":
+        return super().has_item(key, val)
+
+    def attr(self, name: Any, expected: Any):
+        super().attr(name, expected)
+
+    def matches(self, pattern: AnyStr | re.Pattern, flags: int = 0):
+        super().matches(pattern, flags)
+        
+    def not_match(self, pattern: AnyStr | re.Pattern, flag: int = 0):
+        super().not_match(pattern, flag)
+
+    def length(self, n: int):
+        super().length(n)
+
+    def is_file(self):
+        super().is_file()
+
+    def not_file(self):
+        super().not_file()
+
+    def is_dir(self):
+        super().is_dir()
+
+    def not_dir(self):
+        super().not_dir()
+
+    def exists(self):
+        super().exists()
+
+    def not_exist(self):
+        super().not_exists()
+
+    def is_truthy(self):
+        super().is_truthy()
+
+    def is_falsy(self):
+        super().is_falsy()
+
+    def all(self, func: Callable) -> "AssertionObject":
+        return super().all(func)
+
+    def any(self, func: Callable) -> "AssertionObject":
+        return super().any()
+
+    def raises(self, exception_class: Type[Exception], errmsg: str | None = None):
+        super().raises(exception_class, errmsg)
+
+    def not_raise(self, exception_class: Type[Exception] = Exception):
+        super().not_raise(exception_class)
+
+
+oktest.ASSERTION_OBJECT = AssertionObject
+
+
+# I simply like better to read it "expect(True) != False" rather than "ok(True) != False
+# We are providing type hints by forwarding the call rather than just assigning a variable
+def expect(statement: Any) -> AssertionObject:
+    return oktest.ok(statement)
 
 
 # Support callable conditions for skip functions. This also fixes an issue with _firstlineno setting
