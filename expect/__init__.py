@@ -36,7 +36,7 @@ class AssertionObject(oktest.AssertionObject):
         super().__eq__(other)
 
     def __ne__(self, other: Any):
-        super().__eq__(other)
+        super().__ne__(other)
 
     def __gt__(self, other: Any):
         super().__gt__(other)
@@ -81,7 +81,7 @@ class AssertionObject(oktest.AssertionObject):
         super().is_not_a(other)
 
     def has_attr(self, name: str):
-        super().__eq__(name)
+        super().has_attr(name)
 
     # Hidden in favor of using in_
     # def has_key(self, key: Any) -> "AssertionObject":
