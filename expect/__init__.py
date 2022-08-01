@@ -56,10 +56,10 @@ class AssertionObject(oktest.AssertionObject):
     def in_delta(self, other: Any, delta: Any) -> "AssertionObject":
         return super().in_delta(other, delta)
 
-    def in_(self, other: list[Any] | dict[Any, Any]):
+    def in_(self, other: set[Any] | list[Any] | dict[Any, Any]):
         super().in_(other)
 
-    def not_in(self, other: list[Any]):
+    def not_in(self, other: set[Any] | list[Any] | dict[Any, Any]):
         super().not_in(other)
 
     def contains(self, other: Any):
@@ -130,7 +130,7 @@ class AssertionObject(oktest.AssertionObject):
         return super().all(func)
 
     def any(self, func: Callable) -> "AssertionObject":
-        return super().any()
+        return super().any(func)
 
     def raises(self, exception_class: Type[Exception], errmsg: str | None = None):
         super().raises(exception_class, errmsg)
