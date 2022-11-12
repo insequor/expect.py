@@ -148,6 +148,29 @@ def expect(statement: Any) -> AssertionObject:
     return oktest.ok(statement)
 
 
+class RequiredAssertionObject(oktest.AssertionObject):
+    def _assertion_error(self, msg, file, line, diff):
+        msg = f"(FAILED TEST CONDITION) {msg}"
+        ex = Exception(diff and msg + "\n" + diff or msg)
+        ex.file = file;  ex.line = line;  ex.diff = diff;  ex.errmsg = msg
+        ex._raised_by_oktest = True
+        return ex 
+
+def require(statement: Any) -> RequiredAssertionObject:
+    """require is identical to expect in its usage. However it is used for cases where we want to 
+       validate a pre or post condition for our action, rather than the expectation that we want 
+       to test. For example, if your expectation is related to the content of a file you might require 
+       that the file is there. 
+       Unlike expect, require will raise an Exception rather than AssertionError. This will cause the test 
+       to have Error status, not Fail. This is what we want, we could not properly execute our test 
+       since a pre-condition failed"""
+    oldObjectType = oktest.ASSERTION_OBJECT
+    oktest.ASSERTION_OBJECT = RequiredAssertionObject
+    assertionObject = expect(statement)
+    oktest.ASSERTION_OBJECT = oldObjectType
+    return assertionObject
+
+
 # Support callable conditions for skip functions. This also fixes an issue with _firstlineno setting
 # The issue is visible if skip comes after todo item. It was keeping the line number of todo decorator
 # instead of the original function
