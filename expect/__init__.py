@@ -150,7 +150,7 @@ def expect(statement: Any) -> AssertionObject:
 
 class RequiredAssertionObject(oktest.AssertionObject):
     def _assertion_error(self, msg, file, line, diff):
-        msg = f"(FAILED TEST CONDITION) {msg}"
+        msg = f"(FAILED PRE/POST CONDITION) {msg}"
         ex = Exception(diff and msg + "\n" + diff or msg)
         ex.file = file;  ex.line = line;  ex.diff = diff;  ex.errmsg = msg
         ex._raised_by_oktest = True
