@@ -11,12 +11,10 @@ class Issue_2_EvaluatingConditionInPrintMessageTestCase:
                 self.value = 2.0
 
             def __eq__(self, other):
-                print(f"\n Value is requested: {self.callCount}")
                 self.callCount += 1
                 return self.value == other
 
             def __ne__(self, other):
-                print(f"\n Value is requested: {self.callCount}")
                 self.callCount += 1
                 return self.value != other
 

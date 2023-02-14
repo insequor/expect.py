@@ -27,11 +27,25 @@ situation = oktest.situation
 #
 # Customizations
 #
+@oktest.assertion
+def is_subclass_of(self, arg):
+    boolean = issubclass(self.target, arg)
+    if boolean == self.boolean: return self
+    self.failed(f"{self.target} is not subclass of {arg}")
+    
+
+@oktest.assertion
+def is_not_subclass_of(self, arg):
+    boolean = not issubclass(self.target, arg)
+    if boolean == self.boolean: return self
+    self.failed(f"{self.target} is subclass of {arg}")
+    
 
 
 # oktest adds the assertions at runtime, but that means we do not get type hints
 # 
 class AssertionObject(oktest.AssertionObject):
+    
     def __eq__(self, other: Any):
         super().__eq__(other)
 
@@ -79,6 +93,13 @@ class AssertionObject(oktest.AssertionObject):
 
     def is_not_a(self, other: type):
         super().is_not_a(other)
+
+    def is_subclass_of(self, arg):
+        super().is_subclass_of(arg)
+        
+    def is_not_subclass_of(self, arg):
+        super().is_not_subclass_of(arg)
+        
 
     def has_attr(self, name: str):
         super().has_attr(name)
@@ -145,7 +166,7 @@ oktest.ASSERTION_OBJECT = AssertionObject
 # I simply like better to read it "expect(True) != False" rather than "ok(True) != False
 # We are providing type hints by forwarding the call rather than just assigning a variable
 def expect(statement: Any) -> AssertionObject:
-    return oktest.ok(statement)
+    return oktest.ok(statement)  # type: ignore
 
 
 class RequiredAssertionObject(oktest.AssertionObject):
