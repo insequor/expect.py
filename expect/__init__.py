@@ -1,11 +1,12 @@
 import logging
 import re
+import sys
 from typing import Callable, Union, Any, Type, AnyStr
 
 import oktest  # type: ignore
 
 __all__ = ('expect', 'NOT', 'NG', 'not_ok', 'run', 'spec', 'test_that', 'fail',
-           'skip', 'todo', 'options_of', 'at_end', 'subject', 'situation', 'main')
+           'skip', 'todo', 'options_of', 'at_end', 'subject', 'situation', 'main', 'warning')
 
 #
 # Re-use from oktest
@@ -24,6 +25,7 @@ situation = oktest.situation
 # TODO: More investigation needed to use main from oktest. I got recursion errors when I called this method
 # main = oktest.main
 
+
 #
 # Customizations
 #
@@ -39,8 +41,127 @@ def is_not_subclass_of(self, arg):
     boolean = not issubclass(self.target, arg)
     if boolean == self.boolean: return self
     self.failed(f"{self.target} is subclass of {arg}")
-    
 
+
+ST_WARNING = "warning"
+
+
+class VerboseReporter(oktest.VerboseReporter):
+    INDICATOR = {**oktest.BaseReporter.INDICATOR, **{ST_WARNING: "Warning"}} 
+
+    def exit_testcase(self, testcase, testname, status, exc_info):
+        s = ""
+        if status == oktest.ST_SKIPPED or status == ST_WARNING:
+            ex = exc_info[1]
+            #reason = getattr(ex, 'reason', '')
+            reason = ex.args[0]
+            s = " (reason: %s)" % (reason, )
+            if status != ST_WARNING:
+                exc_info = ()
+            else:
+                if ex.exc_info:
+                    exc_info = ex.exc_info
+
+        self._super.exit_testcase(self, testcase, testname, status, exc_info)
+        self._erase_temporary_str()
+        indicator = self.indicator(status)
+        desc = self.get_testcase_desc(testcase, testname)
+        self.write("  " * self.depth + "- [%s] %s%s\n" % (indicator, desc, s))
+        self.out.flush()
+
+oktest.REPORTER = VerboseReporter
+
+class TestRunner(oktest.TEST_RUNNER):
+    instance: "TestRunner | None"
+    def __init__(self, *args_, **kwargs_):
+        super().__init__(*args_, **kwargs_)
+        TestRunner.instance = self 
+
+    def _run_testcase(self, testcase, testname):
+        try:
+            meth = getattr(testcase, testname)
+            meth()
+        except KeyboardInterrupt:
+            raise
+        except AssertionError:
+            return oktest.ST_FAILED, sys.exc_info()
+        except oktest.SkipTest:
+            return oktest.ST_SKIPPED, sys.exc_info()
+        except _Warning as w:
+            return ST_WARNING, sys.exc_info()
+        except oktest._ExpectedFailure:   # when failed expectedly
+            return oktest.ST_TODO, ()
+        except oktest._UnexpectedSuccess: # when passed unexpectedly
+            #return ST_UNEXPECTED, ()
+            ex = sys.exc_info()[1]
+            if not ex.args:
+                ex.args = ("test should be failed (because not implemented yet), but passed unexpectedly.",)
+            return oktest.ST_FAILED, sys.exc_info()
+        except Exception:
+            return oktest.ST_ERROR, sys.exc_info()
+        else:
+            specs = getattr(testcase, '_oktest_specs', None)
+            arr = specs and [ spec for spec in specs if spec._exception ]
+            if arr: 
+                return oktest.ST_FAILED, arr
+            return oktest.ST_PASSED, ()
+
+
+def execute(*targets, **kwargs) -> tuple[int, dict[str, int]]:
+    """ Return more information about a test execution  
+        The default run method returns the number of failed and errored tests only
+        With this implementation we are also returning the counts dictionary so additional
+        checks can be performed
+    """
+    try:
+        TestRunner.instance = None
+        oldRunner = oktest.TEST_RUNNER
+        oktest.TEST_RUNNER = TestRunner
+        result = oktest.run(*targets, **kwargs)
+        counts = TestRunner.instance.reporter.counts if TestRunner.instance else {}
+        counts["total"] = sum(counts.values())
+        return result, counts
+    finally:
+        oktest.TEST_RUNNER = oldRunner
+
+
+class _Warning(Exception):
+    def __init__(self, message: str, exc_info):
+        super().__init__(message)
+        self.exc_info = exc_info
+
+class WarningObject(object):
+
+    def __call__(self, fn):
+        """ Stop the test execution and mark it as warning, it works similar to fail() function"""
+        return self.when(True, "")(fn)
+
+    def when(self, condition, reason=""):
+        if condition:
+            def deco(func):
+                def fn(*args, **kwargs):
+                    try:
+                        func(*args, **kwargs)
+                    except AssertionError as error:
+                        # raise _WarningFailure(sys.exc_info())
+                        raise _Warning(reason, sys.exc_info())
+                fn.__name__ = func.__name__
+                fn.__doc__  = func.__doc__
+                fn._firstlineno = oktest.util._func_firstlineno(func)
+                return fn
+        else:
+            
+            def deco(func):
+                return func
+        
+        return deco
+
+
+warning = WarningObject()
+
+def warn(reason):
+    """ Stop the test execution and mark it as warning, it works similar to fail() function"""
+    raise _Warning(message=reason, exc_info=[])
 
 # oktest adds the assertions at runtime, but that means we do not get type hints
 # 

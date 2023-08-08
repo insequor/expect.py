@@ -69,7 +69,7 @@ class is_not_subclass_of_TestCase:
             pass 
 
         expect(B).is_not_subclass_of(A)
-        
+
 
 if __name__ == "__main__":
     run()
