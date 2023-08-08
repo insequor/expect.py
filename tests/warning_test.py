@@ -29,7 +29,7 @@ class WarningTestCase:
     def _(_):
         class MyTestCase:
             @test_that("todo test as todo")
-            @warning.when(True)
+            @warning
             def _(_):
                 expect(True).is_falsy()
 
@@ -44,7 +44,7 @@ class WarningTestCase:
     def _(_):
         class MyTestCase:
             @test_that("warning test with message")
-            @warning.when(True, "just because")
+            @warning("just because")
             def _(_):
                 expect(True).is_falsy()
 
@@ -72,11 +72,11 @@ class WarningTestCase:
         expect(counts["pass"]) == 0
         expect(counts["fail"]) == 1
 
-    @test_that("We can use the warning without condition which defaults to always mark as warning")
+    @test_that("A failed test decorated with warning and condition is True, reported as warning")
     def _(_):
         class MyTestCase:
             @test_that("todo test as todo")
-            @warning
+            @warning.when(True)
             def _(_):
                 expect(True).is_falsy()
 

@@ -51,12 +51,12 @@ class VerboseReporter(oktest.VerboseReporter):
 
     def exit_testcase(self, testcase, testname, status, exc_info):
         s = ""
-        if status == oktest.ST_SKIPPED or status == ST_WARNING:
+        if status in {oktest.ST_SKIPPED, ST_WARNING, oktest.ST_TODO}:
             ex = exc_info[1]
             #reason = getattr(ex, 'reason', '')
             reason = ex.args[0]
             s = " (reason: %s)" % (reason, )
-            if status != ST_WARNING:
+            if status == oktest.ST_SKIPPED:
                 exc_info = ()
             else:
                 if ex.exc_info:
@@ -87,10 +87,10 @@ class TestRunner(oktest.TEST_RUNNER):
             return oktest.ST_FAILED, sys.exc_info()
         except oktest.SkipTest:
             return oktest.ST_SKIPPED, sys.exc_info()
-        except _Warning as w:
+        except _Warning:
             return ST_WARNING, sys.exc_info()
-        except oktest._ExpectedFailure:   # when failed expectedly
-            return oktest.ST_TODO, ()
+        except _Todo:   # when failed expectedly
+            return oktest.ST_TODO, sys.exc_info()
         except oktest._UnexpectedSuccess: # when passed unexpectedly
             #return ST_UNEXPECTED, ()
             ex = sys.exc_info()[1]
@@ -132,9 +132,17 @@ class _Warning(Exception):
 
 class WarningObject(object):
 
-    def __call__(self, fn):
+    def __call__(self, fn=None, reason=None):
         """ Stop the test execution and mark it as warning, it works similar to fail() function"""
-        return self.when(True, "")(fn)
+        if isinstance(fn, str) and reason is None:
+            reason, fn = fn, reason 
+        if reason is None:
+            reason = ""
+
+        wrapper = self.when(True, reason)
+        if fn is not None:
+            wrapper = wrapper(fn) 
+        return wrapper
 
     def when(self, condition, reason=""):
         if condition:
@@ -162,6 +170,57 @@ warning = WarningObject()
 def warn(reason):
     """ Stop the test execution and mark it as warning, it works similar to fail() function"""
     raise _Warning(message=reason, exc_info=[])
+
+
+class _Todo(Exception):
+    def __init__(self, message: str, exc_info):
+        super().__init__(message)
+        self.exc_info = exc_info
+
+
+class TodoObject(object):
+
+    def __call__(self, fn=None, reason=None):
+        """ Stop the test execution and mark it as warning, it works similar to fail() function"""
+        if isinstance(fn, str) and reason is None:
+            reason, fn = fn, reason 
+        if reason is None:
+            reason = ""
+
+        wrapper = self.when(True, reason)
+        if fn is not None:
+            wrapper = wrapper(fn) 
+        return wrapper
+
+    def when(self, condition, reason=""):
+        if condition:
+            def deco(func):
+                def fn(*args, **kwargs):
+                    try:
+                        func(*args, **kwargs)
+                        raise oktest._UnexpectedSuccess("test should be failed (because not implemented yet), but passed unexpectedly.")
+                    except AssertionError as error:
+                        raise _Todo(reason, sys.exc_info())
+                    
+                fn.__name__ = func.__name__
+                fn.__doc__  = func.__doc__
+                fn._original_function = func
+                fn._firstlineno = getattr(func, '_firstlineno', None) or oktest.util._func_firstlineno(func)
+                return fn
+        else:
+            
+            def deco(func):
+                return func
+        
+        return deco
+
+
+todo = TodoObject()
+
+def makeTodo(reason):
+    """ Stop the test execution and mark it as warning, it works similar to fail() function"""
+    raise _Todo(message=reason, exc_info=[])
+
 
 # oktest adds the assertions at runtime, but that means we do not get type hints
 # 
@@ -367,14 +426,6 @@ skip = SkipWithRuntimeConditionEvaluation()
 
 # testThat forces a certain test description, more towards action and validation while test is too generic
 test_that = oktest.test
-
-
-# This is to ensure that todo tests are shown without altering the order, oktest shows them at the end
-def todo(func: Callable):
-    deco = oktest.todo(func) 
-    lineno = getattr(func, '_firstlineno', None) or oktest.util._func_firstlineno(func)
-    deco._firstlineno = lineno
-    return deco 
 
 
 # TODO: Fail the test case if there is no test executed (no tests, or all skipped). There should be at least one
