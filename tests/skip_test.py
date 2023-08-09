@@ -7,7 +7,7 @@ from io import StringIO
 # Third Party Imports 
 
 # Internal Imports
-from expect import expect, skip, test_that, run, fail
+from expect import expect, skip, test_that, run, fail, todo
 
 class SkipTestCase:
     @test_that("a test marked with skip decorator is reported as skip")
@@ -81,6 +81,24 @@ class SkipTestCase:
         expect(summary["total"]) == 2
         expect(summary["skip"]) == 1
         expect(summary["fail"]) == 1
+
+    @test_that("We can skip a test during the pre callback", tag="debug")
+    @todo("this might be a useful thing for auto-generated tests but not supported yet")
+    def _(_):
+        fail("Not implemented functionality")
+        class MyTestCase:
+            def before(_):
+                skip("from before call")
+                pass 
+
+            @test_that("skip test")
+            def _(_):
+                fail("should be warning")
+        summary = {}
+        result = run(MyTestCase, out=StringIO(), summary=summary)
+        expect(result) == 1
+        expect(summary["total"]) == 1
+        expect(summary["skip"]) == 1
 
 
 if __name__ == "__main__":
