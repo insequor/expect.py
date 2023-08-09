@@ -9,7 +9,7 @@ import re
 import oktest 
 
 # Internal Imports
-from expect import expect, todo, test_that, run, fail, warning
+from expect import expect, todo, test_that, run, fail, warn
 
 
 class ExecuteTestCase:
@@ -55,7 +55,7 @@ class ExecuteTestCase:
                 fail("")
 
             @test_that("warning")
-            @warning("")
+            @warn.always("")
             def _(_):
                 fail("")
 
@@ -86,7 +86,7 @@ class ExecuteTestCase:
                 fail("")
 
             @test_that("warning")
-            @warning("")
+            @warn.always("")
             def _(_):
                 fail("")
 

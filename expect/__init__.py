@@ -6,7 +6,7 @@ from typing import Callable, Union, Any, Type, AnyStr
 import oktest  # type: ignore
 
 __all__ = ('expect', 'NOT', 'NG', 'not_ok', 'run', 'spec', 'test_that', 'fail',
-           'skip', 'todo', 'options_of', 'at_end', 'subject', 'situation', 'main', 'warning')
+           'skip', 'todo', 'options_of', 'at_end', 'subject', 'situation', 'main', 'warn')
 
 #
 # Re-use from oktest
@@ -60,7 +60,7 @@ class VerboseReporter(oktest.VerboseReporter):
             #reason = getattr(ex, 'reason', '')
             reason = ex.args[0]
             s = " (reason: %s)" % (reason, )
-            if status == oktest.ST_SKIPPED:
+            if status != ST_WARNING:
                 exc_info = ()
             else:
                 if ex.exc_info:
