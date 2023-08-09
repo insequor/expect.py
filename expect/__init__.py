@@ -48,7 +48,11 @@ ST_WARNING = "warning"
 
 class VerboseReporter(oktest.VerboseReporter):
     INDICATOR = {**oktest.BaseReporter.INDICATOR, **{ST_WARNING: "Warning"}} 
+    _counts2str_table = [*oktest.BaseReporter._counts2str_table, *[(ST_WARNING, "warning", True)]]
 
+    def clear_counts(self):
+        self.counts = {key: 0 for (key, *_) in self._counts2str_table}
+    
     def exit_testcase(self, testcase, testname, status, exc_info):
         s = ""
         if status in {oktest.ST_SKIPPED, ST_WARNING, oktest.ST_TODO}:
@@ -117,12 +121,44 @@ def execute(*targets, **kwargs) -> tuple[int, dict[str, int]]:
         TestRunner.instance = None
         oldRunner = oktest.TEST_RUNNER
         oktest.TEST_RUNNER = TestRunner
+        if targets == tuple():
+            # WE do the discovery otherwise run method can't find them due to frame difference
+            targets = (oktest.config.TARGET_PATTERN, )
+            targets = list(oktest._target_classes(targets))
+            
         result = oktest.run(*targets, **kwargs)
         counts = TestRunner.instance.reporter.counts if TestRunner.instance else {}
         counts["total"] = sum(counts.values())
         return result, counts
     finally:
         oktest.TEST_RUNNER = oldRunner
+
+
+oktestRun = oktest.run
+def run(*targets, summary:dict[str, int] | None = None, **kwargs) -> int:
+    try:
+        TestRunner.instance = None
+        oldRunner = oktest.TEST_RUNNER
+        oktest.TEST_RUNNER = TestRunner
+        if targets == tuple():
+            # WE do the discovery otherwise run method can't find them due to frame difference
+            targets = (oktest.config.TARGET_PATTERN, )
+            targets = list(oktest._target_classes(targets))
+            
+        result = oktestRun(*targets, **kwargs)
+        if summary is not None:
+            counts = TestRunner.instance.reporter.counts if TestRunner.instance else {}
+            counts["total"] = sum(counts.values())
+            for key, value in counts.items():
+                summary[key] = summary.get(key, 0) + value 
+
+        return result
+    
+    finally:
+        oktest.TEST_RUNNER = oldRunner
+
+
+oktest.run = run 
 
 
 class _Warning(Exception):
@@ -132,19 +168,14 @@ class _Warning(Exception):
 
 class WarningObject(object):
 
-    def __call__(self, fn=None, reason=None):
+    def __call__(self, reason: str):
         """ Stop the test execution and mark it as warning, it works similar to fail() function"""
-        if isinstance(fn, str) and reason is None:
-            reason, fn = fn, reason 
-        if reason is None:
-            reason = ""
+        raise _Warning(message=reason, exc_info=[])
 
-        wrapper = self.when(True, reason)
-        if fn is not None:
-            wrapper = wrapper(fn) 
-        return wrapper
-
-    def when(self, condition, reason=""):
+    def always(self, reason: str = ""):
+        return self.when(True, reason)
+    
+    def when(self, condition, reason: str = ""):
         if condition:
             def deco(func):
                 def fn(*args, **kwargs):
@@ -158,25 +189,19 @@ class WarningObject(object):
                 fn._firstlineno = oktest.util._func_firstlineno(func)
                 return fn
         else:
-            
             def deco(func):
                 return func
         
         return deco
 
 
-warning = WarningObject()
-
-def warn(reason):
-    """ Stop the test execution and mark it as warning, it works similar to fail() function"""
-    raise _Warning(message=reason, exc_info=[])
+warn = WarningObject()
 
 
 class _Todo(Exception):
     def __init__(self, message: str, exc_info):
         super().__init__(message)
         self.exc_info = exc_info
-
 
 class TodoObject(object):
 
@@ -199,9 +224,9 @@ class TodoObject(object):
                     try:
                         func(*args, **kwargs)
                         raise oktest._UnexpectedSuccess("test should be failed (because not implemented yet), but passed unexpectedly.")
-                    except AssertionError as error:
+                    except AssertionError:
                         raise _Todo(reason, sys.exc_info())
-                    
+                        
                 fn.__name__ = func.__name__
                 fn.__doc__  = func.__doc__
                 fn._original_function = func
@@ -216,10 +241,6 @@ class TodoObject(object):
 
 
 todo = TodoObject()
-
-def makeTodo(reason):
-    """ Stop the test execution and mark it as warning, it works similar to fail() function"""
-    raise _Todo(message=reason, exc_info=[])
 
 
 # oktest adds the assertions at runtime, but that means we do not get type hints

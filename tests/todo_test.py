@@ -7,7 +7,7 @@ from io import StringIO
 # Third Party Imports 
 
 # Internal Imports
-from expect import expect, todo, test_that, run, execute, makeTodo
+from expect import expect, todo, test_that, run, fail
 
 class TodoTestCase:
     @test_that("Existing behavior: a test marked with todo decorator and failing is reported as todo")
@@ -17,10 +17,11 @@ class TodoTestCase:
             @todo 
             def _(_):
                 expect(True).is_falsy()
-        result, counts = execute(MyTestCase, out=StringIO())
+        summary = {}
+        result = run(MyTestCase, out=StringIO(), summary=summary)
         expect(result) == 0
-        expect(counts["todo"]) == 1
-        expect(counts["fail"]) == 0
+        expect(summary["todo"]) == 1
+        expect(summary["fail"]) == 0
 
     @test_that("Existing behavior: a test marked with todo decorator but NOT failing is reported as failure, and log says unexpected success")
     def _(_):
@@ -30,10 +31,11 @@ class TodoTestCase:
             def _(_):
                 expect(True).is_truthy()
         out = StringIO()
-        result, counts = execute(MyTestCase, out=out)
+        summary = {}
+        result = run(MyTestCase, out=out, summary=summary)
         expect(result) == 1
-        expect(counts["todo"]) == 0
-        expect(counts["fail"]) == 1
+        expect(summary["todo"]) == 0
+        expect(summary["fail"]) == 1
         out.seek(0)
         report = out.read()
         # print("\n\n", report)
@@ -47,10 +49,11 @@ class TodoTestCase:
             def _(_):
                 expect(True).is_falsy()
         out = StringIO()
-        result, counts = execute(MyTestCase, out=out)
+        summary = {}
+        result = run(MyTestCase, out=out, summary=summary)
         expect(result) == 0
-        expect(counts["todo"]) == 1
-        expect(counts["fail"]) == 0
+        expect(summary["todo"]) == 1
+        expect(summary["fail"]) == 0
         out.seek(0)
         report = out.read()
         # print("\n\n", report)
@@ -63,32 +66,37 @@ class TodoTestCase:
             @todo.when(True, "just for testing")
             def _(_):
                 expect(True).is_falsy()
+
         out = StringIO()
-        result, counts = execute(MyTestCase, out=out)
+        summary = {}
+        result = run(MyTestCase, out=out, summary=summary)
         expect(result) == 0
-        expect(counts["todo"]) == 1
-        expect(counts["fail"]) == 0
+        expect(summary["todo"]) == 1
+        expect(summary["fail"]) == 0
         out.seek(0)
         report = out.read()
         # print("\n\n", report)
         expect(report).contains("just for testing")
 
     @test_that("A test can raise a fail by marking the test as todo during the test execution")
+    @todo("")
     def _(_):
+        fail("this feature not implemented yet")
         class MyTestCase:
             @test_that("todo test as todo")
             def _(_):
-                makeTodo("just because")
+                xxx("just because")
                 expect(True).is_falsy()
 
         out = StringIO()
-        result, counts = execute(MyTestCase, out=out)
+        summary = {}
+        result = run(MyTestCase, out=out, summary=summary)
         out.seek(0)
         report = out.read()
         expect(result) == 0
-        expect(counts["total"]) == 1
-        expect(counts["pass"]) == 0
-        expect(counts["todo"]) == 1
+        expect(summary["total"]) == 1
+        expect(summary["pass"]) == 0
+        expect(summary["todo"]) == 1
         expect(report).contains("(reason: just because)")
 
 if __name__ == "__main__":
