@@ -120,6 +120,34 @@ class TodoTestCase:
         expect(summary["todo"]) == 1
         expect(summary["fail"]) == 1
 
+    @test_that("We can use unless condition for todo")
+    def _(_):
+        class MyTestCase1:
+            @test_that("todo test")
+            @todo.unless(False, "")
+            def _(_):
+                fail("should be todo")
+
+        out = StringIO()
+        summary = {}
+        result = run(MyTestCase1, out=out, summary=summary)
+        expect(result) == 0
+        expect(summary["total"]) == 1
+        expect(summary["todo"]) == 1
+
+        class MyTestCase2:
+            @test_that("NOT todo test")
+            @todo.unless(True, "")
+            def _(_):
+                fail("should be todo")
+
+        out = StringIO()
+        summary = {}
+        result = run(MyTestCase2, out=out, summary=summary)
+        expect(result) == 1
+        expect(summary["total"]) == 1
+        expect(summary["fail"]) == 1
+
 
 if __name__ == "__main__":
     run()

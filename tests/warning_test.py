@@ -101,6 +101,34 @@ class WarningTestCase:
         expect(summary["total"]) == 2
         expect(summary["fail"]) == 1
         expect(summary["warning"]) == 1
+
+    @test_that("We can use unless condition for warning")
+    def _(_):
+        class MyTestCase1:
+            @test_that("warn test")
+            @warn.unless(False, "")
+            def _(_):
+                fail("should be warning")
+
+        out = StringIO()
+        summary = {}
+        result = run(MyTestCase1, out=out, summary=summary)
+        expect(result) == 0
+        expect(summary["total"]) == 1
+        expect(summary["warning"]) == 1
+
+        class MyTestCase2:
+            @test_that("fail test")
+            @warn.unless(True, "")
+            def _(_):
+                fail("should be failure")
+
+        out = StringIO()
+        summary = {}
+        result = run(MyTestCase2, out=out, summary=summary)
+        expect(result) == 1
+        expect(summary["total"]) == 1
+        expect(summary["fail"]) == 1
         
 
 if __name__ == "__main__":

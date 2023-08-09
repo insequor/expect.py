@@ -82,6 +82,34 @@ class SkipTestCase:
         expect(summary["skip"]) == 1
         expect(summary["fail"]) == 1
 
+    @test_that("We can use unless condition for skip")
+    def _(_):
+        class MyTestCase1:
+            @test_that("skip test")
+            @skip.unless(False, "")
+            def _(_):
+                fail("should be skip")
+
+        out = StringIO()
+        summary = {}
+        result = run(MyTestCase1, out=out, summary=summary)
+        expect(result) == 0
+        expect(summary["total"]) == 1
+        expect(summary["skip"]) == 1
+
+        class MyTestCase2:
+            @test_that("fail test")
+            @skip.unless(True, "")
+            def _(_):
+                fail("should be fail")
+
+        out = StringIO()
+        summary = {}
+        result = run(MyTestCase2, out=out, summary=summary)
+        expect(result) == 1
+        expect(summary["total"]) == 1
+        expect(summary["fail"]) == 1
+
     @test_that("We can skip a test during the pre callback", tag="debug")
     @todo("this might be a useful thing for auto-generated tests but not supported yet")
     def _(_):

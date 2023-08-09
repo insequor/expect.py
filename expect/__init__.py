@@ -192,6 +192,10 @@ class WarningObject(object):
             fn._firstlineno = getattr(func, '_firstlineno', oktest.util._func_firstlineno(func))
             return fn
         return deco
+    
+    def unless(self, condition: bool | Callable[[], bool], reason: str):
+        return self.when(lambda : not condition() if callable(condition) else not condition, reason)
+    
 
 
 warn = WarningObject()
@@ -224,7 +228,10 @@ class SkipObject(object):
             return fn
         
         return deco
-
+    
+    def unless(self, condition: bool | Callable[[], bool], reason: str):
+        return self.when(lambda : not condition() if callable(condition) else not condition, reason)
+    
 
 skip = SkipObject()
 
@@ -267,6 +274,9 @@ class TodoObject(object):
             return fn
         return deco
 
+    def unless(self, condition: bool | Callable[[], bool], reason: str):
+        return self.when(lambda : not condition() if callable(condition) else not condition, reason)
+    
 todo = TodoObject()
 
 
