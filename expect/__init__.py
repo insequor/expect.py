@@ -205,7 +205,10 @@ class SkipObject(object):
     def __call__(self, reason: str):
         raise oktest.SkipTest(reason)
 
-    def when(self, condition: bool | Callable[[], bool], reason):
+    def always(self, reason: str):
+        return self.when(True, reason)
+    
+    def when(self, condition: bool | Callable[[], bool], reason: str):
         
         def deco(func):
             def fn(*args, __condition__=condition, **kwargs):
