@@ -8,11 +8,11 @@ from io import StringIO
 # Third Party Imports 
 
 # Internal Imports
-from expect import expect, test_that, run, warn
+from expect import expect, test_that, run, warn, fail
 
 
 class WarningTestCase:
-    @test_that("A failed test decorated with warning and condition is True reported as warning")
+    @test_that("A failed test decorated with warning and condition is True reported as warning", tag="debug")
     def _(_):
         class MyTestCase:
             @test_that("todo test as todo")
@@ -81,6 +81,27 @@ class WarningTestCase:
         expect(summary["warning"]) == 1
         expect(report).contains("(reason: just because)")
 
+    @test_that("We can use a callable as a condition to warn")
+    def _(_):
+        class MyTestCase:
+            @test_that("warning test")
+            @warn.when(lambda: True, "condition to evaluate True")
+            def _(_):
+                fail("should be warning")
+
+            @test_that("failing test")
+            @warn.when(lambda: False, "condition to evaluate False")
+            def _(_):
+                fail("should not be warning")
+
+        out = StringIO()
+        summary = {}
+        result = run(MyTestCase, out=out, summary=summary)
+        expect(result) == 1
+        expect(summary["total"]) == 2
+        expect(summary["fail"]) == 1
+        expect(summary["warning"]) == 1
+        
 
 if __name__ == "__main__":
     run()

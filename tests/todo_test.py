@@ -99,5 +99,27 @@ class TodoTestCase:
         expect(summary["todo"]) == 1
         expect(report).contains("(reason: just because)")
 
+    @test_that("We can use a callable as a condition for todo")
+    def _(_):
+        class MyTestCase:
+            @test_that("todo test")
+            @todo.when(lambda: True, "condition to evaluate True")
+            def _(_):
+                fail("should be warning")
+
+            @test_that("failing test")
+            @todo.when(lambda: False, "condition to evaluate False")
+            def _(_):
+                fail("should not be warning")
+
+        out = StringIO()
+        summary = {}
+        result = run(MyTestCase, out=out, summary=summary)
+        expect(result) == 1
+        expect(summary["total"]) == 2
+        expect(summary["todo"]) == 1
+        expect(summary["fail"]) == 1
+
+
 if __name__ == "__main__":
     run()

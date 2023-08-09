@@ -175,28 +175,55 @@ class WarningObject(object):
     def always(self, reason: str = ""):
         return self.when(True, reason)
     
-    def when(self, condition, reason: str = ""):
-        if condition:
-            def deco(func):
-                def fn(*args, **kwargs):
-                    try:
-                        func(*args, **kwargs)
-                    except AssertionError as error:
-                        # raise _WarningFailure(sys.exc_info())
-                        raise _Warning(reason, sys.exc_info())
-                fn.__name__ = func.__name__
-                fn.__doc__  = func.__doc__
-                fn._firstlineno = oktest.util._func_firstlineno(func)
-                return fn
-        else:
-            def deco(func):
-                return func
+    def when(self, condition: bool | Callable[[], bool], reason: str = ""):
         
+        def deco(func):
+            def fn(*args, __condition__=condition, **kwargs):
+                try:
+                    func(*args, **kwargs)
+                except AssertionError as error:
+                    condition = __condition__() if callable(__condition__) else __condition__
+                    if condition:
+                        raise _Warning(reason, sys.exc_info())
+                    else:
+                        raise error 
+            fn.__name__ = func.__name__
+            fn.__doc__  = func.__doc__
+            fn._firstlineno = getattr(func, '_firstlineno', oktest.util._func_firstlineno(func))
+            return fn
         return deco
 
 
 warn = WarningObject()
 
+
+
+# Support callable conditions for skip functions. This also fixes an issue with _firstlineno setting
+# The issue is visible if skip comes after todo item. It was keeping the line number of todo decorator
+# instead of the original function
+class SkipObject(object):
+    def __call__(self, reason: str):
+        raise oktest.SkipTest(reason)
+
+    def when(self, condition: bool | Callable[[], bool], reason):
+        
+        def deco(func):
+            def fn(*args, __condition__=condition, **kwargs):
+                condition = __condition__() if callable(__condition__) else __condition__
+                if condition:
+                    raise oktest.SkipTest(reason)
+                else:
+                    func(*args, **kwargs)
+                 
+            fn.__name__ = func.__name__
+            fn.__doc__  = func.__doc__
+            fn._firstlineno = getattr(func, '_firstlineno', oktest.util._func_firstlineno(func))
+            return fn
+        
+        return deco
+
+
+skip = SkipObject()
 
 class _Todo(Exception):
     def __init__(self, message: str, exc_info):
@@ -217,28 +244,25 @@ class TodoObject(object):
             wrapper = wrapper(fn) 
         return wrapper
 
-    def when(self, condition, reason=""):
-        if condition:
-            def deco(func):
-                def fn(*args, **kwargs):
+    def when(self, condition: bool | Callable[[], bool], reason: str = ""):
+        
+        def deco(func):
+            def fn(*args, __condition__=condition, **kwargs):
+                condition = __condition__() if callable(__condition__) else __condition__
+                if condition:
                     try:
                         func(*args, **kwargs)
                         raise oktest._UnexpectedSuccess("test should be failed (because not implemented yet), but passed unexpectedly.")
                     except AssertionError:
                         raise _Todo(reason, sys.exc_info())
-                        
-                fn.__name__ = func.__name__
-                fn.__doc__  = func.__doc__
-                fn._original_function = func
-                fn._firstlineno = getattr(func, '_firstlineno', None) or oktest.util._func_firstlineno(func)
-                return fn
-        else:
-            
-            def deco(func):
-                return func
-        
+                else:
+                    func(*args, **kwargs)
+                
+            fn.__name__ = func.__name__
+            fn.__doc__  = func.__doc__
+            fn._firstlineno = getattr(func, '_firstlineno', oktest.util._func_firstlineno(func))
+            return fn
         return deco
-
 
 todo = TodoObject()
 
@@ -391,58 +415,6 @@ def require(statement: Any) -> RequiredAssertionObject:
     assertionObject = expect(statement)
     oktest.ASSERTION_OBJECT = oldObjectType
     return assertionObject
-
-
-# Support callable conditions for skip functions. This also fixes an issue with _firstlineno setting
-# The issue is visible if skip comes after todo item. It was keeping the line number of todo decorator
-# instead of the original function
-class SkipWithRuntimeConditionEvaluation(object):
-    def __call__(self, reason: str):
-        raise oktest.SkipTest(reason)
-
-    def when(self, condition: Union[bool, Callable], reason):
-        if callable(condition):
-            condition_ = condition
-        else:
-            def condition_():
-                return condition
-
-        def deco(func):
-            def fn(self):
-                if condition_():
-                    raise oktest.SkipTest(reason)
-                else:
-                    func(self)
-            fn.__name__ = func.__name__
-            fn.__doc__ = func.__doc__
-            lineno = getattr(func, '_firstlineno', None) or oktest.util._func_firstlineno(func)
-            fn._firstlineno = lineno
-            return fn
-        return deco
-
-    def unless(self, condition: Union[bool, Callable], reason: str):
-        if callable(condition):
-            condition_ = condition
-        else:
-            def condition_():
-                return condition
-
-        def deco(func):
-            def fn(self):
-                if not condition_():
-                    raise oktest.SkipTest(reason)
-                else:
-                    func(self)
-            fn.__name__ = func.__name__
-            fn.__doc__ = func.__doc__
-            lineno = getattr(func, '_firstlineno', None) or oktest.util._func_firstlineno(func)
-            fn._firstlineno = lineno
-            return fn
-
-        return deco
-
-
-skip = SkipWithRuntimeConditionEvaluation()
 
 
 # testThat forces a certain test description, more towards action and validation while test is too generic
