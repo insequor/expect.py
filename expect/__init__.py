@@ -1,7 +1,7 @@
 import logging
 import re
 import sys
-from typing import Callable, Union, Any, Type, AnyStr
+from typing import Callable, Any, Type, AnyStr
 
 import oktest  # type: ignore
 
@@ -15,7 +15,6 @@ __all__ = ('expect', 'NOT', 'NG', 'not_ok', 'run', 'spec', 'test_that', 'fail',
 NOT = oktest.NOT
 NG = oktest.NG
 not_ok = oktest.not_ok 
-run = oktest.run 
 spec = oktest.spec
 fail = oktest.fail
 options_of = oktest.options_of
@@ -32,14 +31,16 @@ situation = oktest.situation
 @oktest.assertion
 def is_subclass_of(self, arg):
     boolean = issubclass(self.target, arg)
-    if boolean == self.boolean: return self
+    if boolean == self.boolean: 
+        return self
     self.failed(f"{self.target} is not subclass of {arg}")
     
 
 @oktest.assertion
 def is_not_subclass_of(self, arg):
     boolean = not issubclass(self.target, arg)
-    if boolean == self.boolean: return self
+    if boolean == self.boolean: 
+        return self
     self.failed(f"{self.target} is subclass of {arg}")
 
 
@@ -57,7 +58,6 @@ class VerboseReporter(oktest.VerboseReporter):
         s = ""
         if status in {oktest.ST_SKIPPED, ST_WARNING, oktest.ST_TODO}:
             ex = exc_info[1]
-            #reason = getattr(ex, 'reason', '')
             reason = ex.args[0]
             s = " (reason: %s)" % (reason, )
             if status != ST_WARNING:
@@ -73,10 +73,13 @@ class VerboseReporter(oktest.VerboseReporter):
         self.write("  " * self.depth + "- [%s] %s%s\n" % (indicator, desc, s))
         self.out.flush()
 
+
 oktest.REPORTER = VerboseReporter
+
 
 class TestRunner(oktest.TEST_RUNNER):
     instance: "TestRunner | None"
+
     def __init__(self, *args_, **kwargs_):
         super().__init__(*args_, **kwargs_)
         TestRunner.instance = self 
@@ -135,7 +138,9 @@ def execute(*targets, **kwargs) -> tuple[int, dict[str, int]]:
 
 
 oktestRun = oktest.run
-def run(*targets, summary:dict[str, int] | None = None, **kwargs) -> int:
+
+
+def run(*targets, summary: dict[str, int] | None = None, **kwargs) -> int:
     try:
         TestRunner.instance = None
         oldRunner = oktest.TEST_RUNNER
@@ -165,6 +170,7 @@ class _Warning(Exception):
     def __init__(self, message: str, exc_info):
         super().__init__(message)
         self.exc_info = exc_info
+
 
 class WarningObject(object):
 
@@ -197,9 +203,7 @@ class WarningObject(object):
         return self.when(lambda : not condition() if callable(condition) else not condition, reason)
     
 
-
 warn = WarningObject()
-
 
 
 # Support callable conditions for skip functions. This also fixes an issue with _firstlineno setting
@@ -235,10 +239,12 @@ class SkipObject(object):
 
 skip = SkipObject()
 
+
 class _Todo(Exception):
     def __init__(self, message: str, exc_info):
         super().__init__(message)
         self.exc_info = exc_info
+
 
 class TodoObject(object):
 
@@ -277,6 +283,7 @@ class TodoObject(object):
     def unless(self, condition: bool | Callable[[], bool], reason: str):
         return self.when(lambda : not condition() if callable(condition) else not condition, reason)
     
+
 todo = TodoObject()
 
 
@@ -338,7 +345,6 @@ class AssertionObject(oktest.AssertionObject):
     def is_not_subclass_of(self, arg):
         super().is_not_subclass_of(arg)
         
-
     def has_attr(self, name: str):
         super().has_attr(name)
 
@@ -377,7 +383,7 @@ class AssertionObject(oktest.AssertionObject):
         super().exists()
 
     def not_exist(self):
-        super().not_exists()
+        super().not_exist()
 
     def is_truthy(self):
         super().is_truthy()
@@ -407,13 +413,27 @@ def expect(statement: Any) -> AssertionObject:
     return oktest.ok(statement)  # type: ignore
 
 
-class RequiredAssertionObject(oktest.AssertionObject):
+class RequiredException(Exception):
+    def __init__(self, msg):
+        super().__init__(msg)
+        self.file = ""
+        self.line = 0
+        self.diff = ""
+        self.errmsg = ""
+        self._raised_by_oktest = True 
+
+
+class RequiredAssertionObject(AssertionObject):
     def _assertion_error(self, msg, file, line, diff):
         msg = f"(FAILED PRE/POST CONDITION) {msg}"
-        ex = Exception(diff and msg + "\n" + diff or msg)
-        ex.file = file;  ex.line = line;  ex.diff = diff;  ex.errmsg = msg
+        ex = RequiredException(diff and msg + "\n" + diff or msg)
+        ex.file = file  
+        ex.line = line
+        ex.diff = diff
+        ex.errmsg = msg
         ex._raised_by_oktest = True
         return ex 
+
 
 def require(statement: Any) -> RequiredAssertionObject:
     """require is identical to expect in its usage. However it is used for cases where we want to 
