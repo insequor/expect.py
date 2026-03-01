@@ -110,21 +110,19 @@ class SkipTestCase:
         expect(summary["total"]) == 1
         expect(summary["fail"]) == 1
 
-    @test_that("We can skip a test during the pre callback", tag="debug")
-    @todo("this might be a useful thing for auto-generated tests but not supported yet")
+    @test_that("We can skip a test during the pre callback")
     def _(_):
-        fail("Not implemented functionality")
         class MyTestCase:
             def before(_):
                 skip("from before call")
-                pass 
 
-            @test_that("skip test")
+            @test_that("should be marked as skipped test")
             def _(_):
-                fail("should be warning")
+                fail("should have been skipped")
+
         summary = {}
         result = run(MyTestCase, out=StringIO(), summary=summary)
-        expect(result) == 1
+        expect(result) == 0
         expect(summary["total"]) == 1
         expect(summary["skip"]) == 1
 

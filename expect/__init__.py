@@ -113,6 +113,44 @@ class TestRunner(oktest.TEST_RUNNER):
                 return oktest.ST_FAILED, arr
             return oktest.ST_PASSED, ()
 
+    def run_testcase(self, testcase, testname):
+        self._enter_testcase(testcase, testname)
+        status = exc_info = None
+        exc_info_list = []
+        try:
+            _, exc_info_ = self._invoke(testcase, 'before', 'setUp')
+            if exc_info_:
+                ex = exc_info_[1]
+                if isinstance(ex, oktest.SkipTest):
+                    status = oktest.ST_SKIPPED
+                    exc_info = exc_info_
+                else:
+                    exc_info_list.append(exc_info_)
+            else:
+                try:
+                    status, exc_info = self._run_testcase(testcase, testname)
+                finally:
+                    if hasattr(testcase, '_at_end_blocks'):
+                        errs = self._run_blocks(testcase._at_end_blocks[::-1])
+                        if errs:
+                            exc_info_list.extend(errs)
+                    _, exc_info_ = self._invoke(testcase, 'after', 'tearDown')
+                    if exc_info_:
+                        exc_info_list.append(exc_info_)
+                    if hasattr(testcase, '_cleanups'):
+                        errs = self._run_blocks(testcase._cleanups[::-1])
+                        if errs:
+                            exc_info_list.extend(errs)
+        finally:
+            if exc_info_list:
+                if status == oktest.ST_FAILED or status == oktest.ST_ERROR:
+                    exc_info_list.insert(0, exc_info)
+                else:
+                    status = oktest.ST_ERROR
+                self._exit_testcase(testcase, testname, status, exc_info_list)
+            else:
+                self._exit_testcase(testcase, testname, status, exc_info)
+
 
 def execute(*targets, **kwargs) -> tuple[int, dict[str, int]]:
     """ Return more information about a test execution  
